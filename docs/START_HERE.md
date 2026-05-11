@@ -2,23 +2,13 @@
 
 **AI-Powered Camera Trap for MaixCAM**
 
----
-
-## 📁 What's Included
-
 | File | Size | Description |
 |------|------|-------------|
-| **wildtrap_app.py** | 24KB | Main production application |
-| **simple_wildtrap.py** | 7.2KB | Educational simplified version |
-| **wildtrap_config.json** | 716B | Configuration file |
-| **README.md** | 7.6KB | Full documentation (English) |
-| **README_RU.md** | 6.2KB | Full documentation (Russian) |
-| **QUICKSTART.md** | 4.5KB | 5-minute setup guide |
-| **EXAMPLES.md** | 8KB | Real-world configurations |
-| **PROJECT_INFO.md** | 11KB | Technical architecture |
-| **DELIVERY_SUMMARY.md** | 9.6KB | Project completion report |
-
-**Total**: 9 files, 88KB
+| **src/wildtrap_app.py** | 32KB | Main v1.5.0 application with UI & Servo |
+| **src/simple_wildtrap.py** | 7.2KB | Educational simplified version |
+| **src/wildtrap_config.json** | 1KB | Configuration file |
+| **README.md** | 8KB | Full bilingual documentation |
+| **docs/** | - | Detailed technical guides |
 
 ---
 
@@ -26,11 +16,25 @@
 
 ### 1. Copy to MaixCAM
 ```bash
-scp wildtrap_app.py wildtrap_config.json root@<MAIXCAM_IP>:/root/
+scp -r src/* root@<MAIXCAM_IP>:/root/
 ```
 
-### 2. Setup Directories
+...
+
+### 3. Run
 ```bash
+python3 wildtrap_app.py
+```
+
+---
+
+## ⚡ v1.5.0 New Features
+
+- 📱 **Advanced UI**: Multi-page touchscreen menu for on-device config.
+- 🤖 **Servo Control**: Integrated physical trigger system.
+- 👁️ **OSD Toggle**: Show/Hide overlay data on live preview.
+- ⚙️ **Quick Reset**: Reset settings to factory defaults via UI.
+
 ssh root@<MAIXCAM_IP>
 mkdir -p /root/wildtrap/{captures,logs,temp}
 ```

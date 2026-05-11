@@ -175,24 +175,27 @@ Available COCO classes:
 
 ```
 /root/wildtrap/
-├── captures/              # Saved photos/videos
+├── src/                  # Application source code
+│   ├── wildtrap_app.py   # Main application
+│   ├── wildtrap_config.json # Configuration
+│   └── simple_wildtrap.py # Educational version
+├── docs/                 # Documentation files
+├── captures/             # Saved photos/videos
 │   ├── 20260510_143022_dog_0.87.jpg
-│   ├── 20260510_143022_dog_0.87.json
 │   └── ...
-├── logs/
-│   └── detections.csv    # Detection history
-└── temp/                 # Temporary files
+└── logs/
+    └── detections.csv    # Detection history
 ```
 
 ---
 
 ### Documentation
 
-- **[START_HERE.md](START_HERE.md)** - Navigation guide
-- **[QUICKSTART.md](QUICKSTART.md)** - 5-minute setup
-- **[EXAMPLES.md](EXAMPLES.md)** - 8 real-world configurations
-- **[PROJECT_INFO.md](PROJECT_INFO.md)** - Technical architecture
-- **[CHANGELOG.md](CHANGELOG.md)** - Version history
+- **[docs/START_HERE.md](docs/START_HERE.md)** - Navigation guide
+- **[docs/QUICKSTART.md](docs/QUICKSTART.md)** - 5-minute setup
+- **[docs/EXAMPLES.md](docs/EXAMPLES.md)** - 8 real-world configurations
+- **[docs/PROJECT_INFO.md](docs/PROJECT_INFO.md)** - Technical architecture
+- **[docs/CHANGELOG.md](docs/CHANGELOG.md)** - Version history
 
 ---
 
