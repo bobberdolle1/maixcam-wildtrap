@@ -558,30 +558,6 @@ class NotificationManager:
         except Exception as e:
             print(f"Webhook error: {e}")
 
-class UIButton:
-    def __init__(self, id, x, y, w, h, label, value=""):
-        self.id = id
-        self.x = x
-        self.y = y
-        self.w = w
-        self.h = h
-        self.label = label
-        self.value = str(value)
-        
-    def draw(self, img, scale=1.0):
-        img.draw_rectangle(self.x, self.y, self.w, self.h, color=COLOR_BG, thickness=-1)
-        img.draw_rectangle(self.x, self.y, self.w, self.h, color=COLOR_TEXT, thickness=2)
-        
-        text_color = COLOR_TEXT if self.value == "" else COLOR_ACCENT
-        if self.value != "":
-            img.draw_string(self.x + int(10*scale), self.y + int(5*scale), self.label, color=COLOR_TEXT, scale=scale)
-            img.draw_string(self.x + int(10*scale), self.y + int(25*scale), self.value, color=text_color, scale=scale*1.2)
-        else:
-            img.draw_string(self.x + int(10*scale), self.y + self.h//2 - int(10*scale), self.label, color=text_color, scale=scale*1.2)
-
-    def is_clicked(self, x, y):
-        return self.x <= x <= self.x + self.w and self.y <= y <= self.y + self.h
-
 class UI:
     """Touchscreen interface management."""
     def __init__(self, state, camera_controller):
@@ -589,6 +565,7 @@ class UI:
         self.camera = camera_controller
         self.touch = None
         self.active_buttons = []
+        self.settings_page = 0
         
     def initialize(self):
         """Initialize touchscreen."""
@@ -600,18 +577,85 @@ class UI:
             pass
         return False
     
-    def draw_main_screen(self, img, objects=None):
-        """Draw main monitoring screen or menu."""
+    def draw(self, img, objects=None):
         if img is None:
             return
-        
-        if self.state.current_screen == "menu":
-            self.draw_menu_screen(img)
-            self.camera.display_frame(img)
-            return
             
+        if self.state.current_screen == "main":
+            self.draw_main_screen(img, objects)
+        elif self.state.current_screen == "menu":
+            self.draw_menu_screen(img)
+            
+        self.camera.display_frame(img)
+
+    def draw_menu_screen(self, img):
+        """Draw settings menu overlay."""
+        self.active_buttons = []
+        scale = 1.0 if img.width() <= 640 else 1.5
+        
+        # Dim background
+        img.draw_rectangle(0, 0, img.width(), img.height(), color=(0,0,0), thickness=-1)
+        title = f"SETTINGS (Page {self.settings_page + 1}/2)"
+        img.draw_string(10, 10, title, color=COLOR_ACCENT, scale=scale*1.8)
+        
+        w = int(img.width() / 2) - 20
+        h = int(50 * scale)
+        spacing = int(10 * scale)
+        start_y = int(60 * scale)
+        
+        btn_data = []
+        if self.settings_page == 0:
+            # Page 1: WildTrap Core Settings
+            btn_data = [
+                (0, "Arm State", "ARMED" if self.state.armed else "STANDBY"),
+                (1, "Detect Mode", self.state.config.get("detection_mode", "hybrid")),
+                (2, "Capture Mode", self.state.config.get("capture_mode", "burst")),
+                (3, "Confidence", f"{self.state.config.get('confidence_threshold', 0.6)}"),
+                (4, "Night Mode", "ON" if self.state.config.get("night_mode", True) else "OFF"),
+                (100, "Next Page ->", "")
+            ]
+        else:
+            # Page 2: Hardware & Maintenance
+            btn_data = [
+                (5, "OSD Display", "ON" if self.state.config.get("osd_enabled", True) else "OFF"),
+                (6, "Servo En", "ON" if self.state.config.get("servo_enabled", False) else "OFF"),
+                (7, "Servo Pin", str(self.state.config.get("servo_pin", "A18"))),
+                (8, "Servo Open", f"{self.state.config.get('servo_angle_open', 90)}°"),
+                (9, "RESET ALL", "!!!", COLOR_ERROR),
+                (101, "<- Prev Page", "")
+            ]
+            
+        # Add a fixed "Save & Exit" button at the bottom center if there's room, 
+        # or just make it part of the grid. Let's make it a grid item.
+        btn_data.append((10, "SAVE & EXIT", "", COLOR_WARNING))
+
+        for i, data in enumerate(btn_data):
+            id, label, value = data[0], data[1], data[2]
+            color_btn = data[3] if len(data) > 3 else None
+            
+            col = i % 2
+            row = i // 2
+            x = 10 + col * (w + 10)
+            y = start_y + row * (h + spacing)
+            
+            # Draw specific button logic
+            img.draw_rectangle(x, y, w, h, color=COLOR_BG, thickness=-1)
+            img.draw_rectangle(x, y, w, h, color=color_btn if color_btn else COLOR_TEXT, thickness=2)
+            
+            txt_color = color_btn if color_btn else COLOR_TEXT
+            if value != "":
+                img.draw_string(x + int(10*scale), y + int(5*scale), label, color=COLOR_TEXT, scale=scale)
+                img.draw_string(x + int(10*scale), y + int(25*scale), value, color=COLOR_ACCENT, scale=scale*1.2)
+            else:
+                img.draw_string(x + int(10*scale), y + h//2 - int(10*scale), label, color=txt_color, scale=scale*1.2)
+                
+            self.active_buttons.append({"id": id, "x": x, "y": y, "w": w, "h": h})
+    
+    def draw_main_screen(self, img, objects=None):
+        """Draw main monitoring screen with live preview."""
         try:
             if self.state.config.get("osd_enabled", True):
+                # Scale font sizes and positions for potentially smaller display (like 552x368)
                 scale = 1.2 if img.width() <= 640 else 1.5
                 y_offset = int(10 * scale)
                 
@@ -640,40 +684,8 @@ class UI:
                               color=COLOR_TEXT, scale=scale)
                 img.draw_string(img.width()//2 - int(80 * scale), img.height() - int(30 * scale),
                               "TAP FOR MENU", color=COLOR_WARNING, scale=scale)
-            
-            self.camera.display_frame(img)
         except Exception as e:
             print(f"UI draw error: {e}")
-            
-    def draw_menu_screen(self, img):
-        self.active_buttons = []
-        scale = 1.0 if img.width() <= 640 else 1.5
-        
-        img.draw_rectangle(0, 0, img.width(), img.height(), color=(0,0,0), thickness=-1)
-        img.draw_string(10, 10, "SETTINGS MENU", color=COLOR_ACCENT, scale=scale*2)
-        
-        w = int(img.width() / 2) - 20
-        h = int(50 * scale)
-        spacing = int(10 * scale)
-        start_y = int(60 * scale)
-        
-        btn_data = [
-            (0, "Arm State", "ARMED" if self.state.armed else "STANDBY"),
-            (1, "OSD Display", "ON" if self.state.config.get("osd_enabled", True) else "OFF"),
-            (2, "Servo Enabled", "ON" if self.state.config.get("servo_enabled", False) else "OFF"),
-            (3, "Servo Pin", str(self.state.config.get("servo_pin", "A18"))),
-            (4, "Servo Open", f"{self.state.config.get('servo_angle_open', 90)}°"),
-            (5, "Save & Close", "")
-        ]
-        
-        for i, (id, label, value) in enumerate(btn_data):
-            col = i % 2
-            row = i // 2
-            x = 10 + col * (w + 10)
-            y = start_y + row * (h + spacing)
-            btn = UIButton(id, x, y, w, h, label, value)
-            btn.draw(img, scale)
-            self.active_buttons.append(btn)
     
     def check_touch(self):
         """Check for touch input."""
@@ -713,8 +725,8 @@ class UI:
                         x, y = tx, ty
                         
                     for btn in self.active_buttons:
-                        if btn.is_clicked(x, y):
-                            self._handle_button_click(btn.id)
+                        if btn["x"] <= x <= btn["x"] + btn["w"] and btn["y"] <= y <= btn["y"] + btn["h"]:
+                            self._handle_button_click(btn["id"])
                             break
         return touch
 
@@ -722,22 +734,49 @@ class UI:
         if btn_id == 0:
             self.state.armed = not self.state.armed
         elif btn_id == 1:
-            self.state.config["osd_enabled"] = not self.state.config.get("osd_enabled", True)
+            modes = ["motion", "ai", "hybrid", "scheduled"]
+            current = self.state.config.get("detection_mode", "hybrid")
+            idx = (modes.index(current) + 1) % len(modes) if current in modes else 0
+            self.state.config["detection_mode"] = modes[idx]
         elif btn_id == 2:
-            self.state.config["servo_enabled"] = not self.state.config.get("servo_enabled", False)
+            caps = ["photo", "burst", "video", "timelapse"]
+            current = self.state.config.get("capture_mode", "photo")
+            idx = (caps.index(current) + 1) % len(caps) if current in caps else 0
+            self.state.config["capture_mode"] = caps[idx]
         elif btn_id == 3:
+            confs = [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+            current = self.state.config.get("confidence_threshold", 0.6)
+            idx = (confs.index(current) + 1) % len(confs) if current in confs else 0
+            self.state.config["confidence_threshold"] = confs[idx]
+        elif btn_id == 4:
+            self.state.config["night_mode"] = not self.state.config.get("night_mode", True)
+        elif btn_id == 5:
+            self.state.config["osd_enabled"] = not self.state.config.get("osd_enabled", True)
+        elif btn_id == 6:
+            self.state.config["servo_enabled"] = not self.state.config.get("servo_enabled", False)
+        elif btn_id == 7:
             pins = ["A14", "A15", "A16", "A17", "A18", "A19"]
             current = self.state.config.get("servo_pin", "A18")
             idx = (pins.index(current) + 1) % len(pins) if current in pins else 0
             self.state.config["servo_pin"] = pins[idx]
-        elif btn_id == 4:
+        elif btn_id == 8:
             angles = [0, 45, 90, 135, 180]
             current = self.state.config.get("servo_angle_open", 90)
             idx = (angles.index(current) + 1) % len(angles) if current in angles else 0
             self.state.config["servo_angle_open"] = angles[idx]
-        elif btn_id == 5:
+        elif btn_id == 9:
+            # RESET ALL
+            self.state.config = DEFAULT_CONFIG.copy()
+            self.state.armed = False
+            print("[UI] Settings reset to default")
+        elif btn_id == 100:
+            self.settings_page = 1
+        elif btn_id == 101:
+            self.settings_page = 0
+        elif btn_id == 10:
             self.state.save()
             self.state.current_screen = "main"
+            self.settings_page = 0
 
 class WildTrapApp:
     """Main application controller."""
