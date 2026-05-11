@@ -558,12 +558,37 @@ class NotificationManager:
         except Exception as e:
             print(f"Webhook error: {e}")
 
+class UIButton:
+    def __init__(self, id, x, y, w, h, label, value=""):
+        self.id = id
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.label = label
+        self.value = str(value)
+        
+    def draw(self, img, scale=1.0):
+        img.draw_rectangle(self.x, self.y, self.w, self.h, color=COLOR_BG, thickness=-1)
+        img.draw_rectangle(self.x, self.y, self.w, self.h, color=COLOR_TEXT, thickness=2)
+        
+        text_color = COLOR_TEXT if self.value == "" else COLOR_ACCENT
+        if self.value != "":
+            img.draw_string(self.x + int(10*scale), self.y + int(5*scale), self.label, color=COLOR_TEXT, scale=scale)
+            img.draw_string(self.x + int(10*scale), self.y + int(25*scale), self.value, color=text_color, scale=scale*1.2)
+        else:
+            img.draw_string(self.x + int(10*scale), self.y + self.h//2 - int(10*scale), self.label, color=text_color, scale=scale*1.2)
+
+    def is_clicked(self, x, y):
+        return self.x <= x <= self.x + self.w and self.y <= y <= self.y + self.h
+
 class UI:
     """Touchscreen interface management."""
     def __init__(self, state, camera_controller):
         self.state = state
         self.camera = camera_controller
         self.touch = None
+        self.active_buttons = []
         
     def initialize(self):
         """Initialize touchscreen."""
@@ -576,35 +601,79 @@ class UI:
         return False
     
     def draw_main_screen(self, img, objects=None):
-        """Draw main monitoring screen with live preview."""
+        """Draw main monitoring screen or menu."""
         if img is None:
             return
+        
+        if self.state.current_screen == "menu":
+            self.draw_menu_screen(img)
+            self.camera.display_frame(img)
+            return
+            
         try:
-            status = "ARMED" if self.state.armed else "STANDBY"
-            status_color = COLOR_ACCENT if self.state.armed else COLOR_WARNING
-            img.draw_string(10, 10, f"STATUS: {status}", color=status_color, scale=2)
-            mode = self.state.config.get("detection_mode", "hybrid").upper()
-            img.draw_string(10, 40, f"Mode: {mode}", color=COLOR_TEXT, scale=1.5)
-            img.draw_string(10, 65, f"Captures: {self.state.captures_today}", color=COLOR_TEXT, scale=1.5)
-            if objects:
-                y_offset = 90
-                for obj in objects[:3]:
-                    text = f"{obj['label']}: {obj['confidence']:.2%}"
-                    img.draw_string(10, y_offset, text, color=COLOR_ACCENT, scale=1.5)
-                    bbox = obj['bbox']
-                    img.draw_rectangle(int(bbox[0]), int(bbox[1]), 
-                                     int(bbox[2]-bbox[0]), int(bbox[3]-bbox[1]),
-                                     color=COLOR_ACCENT, thickness=2)
-                    y_offset += 25
-            used_gb, total_gb = get_disk_usage()
-            img.draw_string(10, img.height() - 30, 
-                          f"Storage: {used_gb:.1f}GB / {total_gb:.1f}GB",
-                          color=COLOR_TEXT, scale=1.5)
-            img.draw_string(img.width()//2 - 80, img.height() - 30,
-                          "TAP FOR MENU", color=COLOR_WARNING, scale=1.5)
+            if self.state.config.get("osd_enabled", True):
+                scale = 1.2 if img.width() <= 640 else 1.5
+                y_offset = int(10 * scale)
+                
+                status = "ARMED" if self.state.armed else "STANDBY"
+                status_color = COLOR_ACCENT if self.state.armed else COLOR_WARNING
+                img.draw_string(10, 10, f"STATUS: {status}", color=status_color, scale=scale*1.3)
+                
+                mode = self.state.config.get("detection_mode", "hybrid").upper()
+                img.draw_string(10, int(40 * scale), f"Mode: {mode}", color=COLOR_TEXT, scale=scale)
+                img.draw_string(10, int(65 * scale), f"Captures: {self.state.captures_today}", color=COLOR_TEXT, scale=scale)
+                
+                if objects:
+                    y_obj_offset = int(90 * scale)
+                    for obj in objects[:3]:
+                        text = f"{obj['label']}: {obj['confidence']:.2%}"
+                        img.draw_string(10, y_obj_offset, text, color=COLOR_ACCENT, scale=scale)
+                        bbox = obj['bbox']
+                        img.draw_rectangle(int(bbox[0]), int(bbox[1]), 
+                                         int(bbox[2]-bbox[0]), int(bbox[3]-bbox[1]),
+                                         color=COLOR_ACCENT, thickness=2)
+                        y_obj_offset += int(25 * scale)
+                        
+                used_gb, total_gb = get_disk_usage()
+                img.draw_string(10, img.height() - int(30 * scale), 
+                              f"Storage: {used_gb:.1f}GB / {total_gb:.1f}GB",
+                              color=COLOR_TEXT, scale=scale)
+                img.draw_string(img.width()//2 - int(80 * scale), img.height() - int(30 * scale),
+                              "TAP FOR MENU", color=COLOR_WARNING, scale=scale)
+            
             self.camera.display_frame(img)
         except Exception as e:
             print(f"UI draw error: {e}")
+            
+    def draw_menu_screen(self, img):
+        self.active_buttons = []
+        scale = 1.0 if img.width() <= 640 else 1.5
+        
+        img.draw_rectangle(0, 0, img.width(), img.height(), color=(0,0,0), thickness=-1)
+        img.draw_string(10, 10, "SETTINGS MENU", color=COLOR_ACCENT, scale=scale*2)
+        
+        w = int(img.width() / 2) - 20
+        h = int(50 * scale)
+        spacing = int(10 * scale)
+        start_y = int(60 * scale)
+        
+        btn_data = [
+            (0, "Arm State", "ARMED" if self.state.armed else "STANDBY"),
+            (1, "OSD Display", "ON" if self.state.config.get("osd_enabled", True) else "OFF"),
+            (2, "Servo Enabled", "ON" if self.state.config.get("servo_enabled", False) else "OFF"),
+            (3, "Servo Pin", str(self.state.config.get("servo_pin", "A18"))),
+            (4, "Servo Open", f"{self.state.config.get('servo_angle_open', 90)}°"),
+            (5, "Save & Close", "")
+        ]
+        
+        for i, (id, label, value) in enumerate(btn_data):
+            col = i % 2
+            row = i // 2
+            x = 10 + col * (w + 10)
+            y = start_y + row * (h + spacing)
+            btn = UIButton(id, x, y, w, h, label, value)
+            btn.draw(img, scale)
+            self.active_buttons.append(btn)
     
     def check_touch(self):
         """Check for touch input."""
@@ -618,16 +687,57 @@ class UI:
             pass
         return None
     
-    def handle_input(self):
+    def handle_input(self, img=None):
         """Handle touch input."""
         touch = self.check_touch()
         if touch:
+            tx, ty, pressed = touch
+            if not pressed:
+                return None
+                
             current_time = time.time()
-            if current_time - self.state.last_touch_time > 0.5:
+            if current_time - self.state.last_touch_time > 0.3:
                 self.state.last_touch_time = current_time
+                
                 if self.state.current_screen == "main":
                     self.state.current_screen = "menu"
+                elif self.state.current_screen == "menu":
+                    disp_w, disp_h = 552, 368
+                    if img and touchscreen:
+                        try:
+                            x = int(tx * img.width() / disp_w)
+                            y = int(ty * img.height() / disp_h)
+                        except:
+                            x, y = tx, ty
+                    else:
+                        x, y = tx, ty
+                        
+                    for btn in self.active_buttons:
+                        if btn.is_clicked(x, y):
+                            self._handle_button_click(btn.id)
+                            break
         return touch
+
+    def _handle_button_click(self, btn_id):
+        if btn_id == 0:
+            self.state.armed = not self.state.armed
+        elif btn_id == 1:
+            self.state.config["osd_enabled"] = not self.state.config.get("osd_enabled", True)
+        elif btn_id == 2:
+            self.state.config["servo_enabled"] = not self.state.config.get("servo_enabled", False)
+        elif btn_id == 3:
+            pins = ["A14", "A15", "A16", "A17", "A18", "A19"]
+            current = self.state.config.get("servo_pin", "A18")
+            idx = (pins.index(current) + 1) % len(pins) if current in pins else 0
+            self.state.config["servo_pin"] = pins[idx]
+        elif btn_id == 4:
+            angles = [0, 45, 90, 135, 180]
+            current = self.state.config.get("servo_angle_open", 90)
+            idx = (angles.index(current) + 1) % len(angles) if current in angles else 0
+            self.state.config["servo_angle_open"] = angles[idx]
+        elif btn_id == 5:
+            self.state.save()
+            self.state.current_screen = "main"
 
 class WildTrapApp:
     """Main application controller."""
@@ -715,24 +825,6 @@ class WildTrapApp:
         """Clean up resources."""
         self.state.save()
         self.servo.cleanup()
-        self.camera.cleanup()
-        print("Cleanup complete")
-
-def main():
-    """Application entry point."""
-    app = WildTrapApp()
-    app.run()
-
-if __name__ == "__main__":
-    main()
-
-            print("\nShutting down...")
-        finally:
-            self.cleanup()
-    
-    def cleanup(self):
-        """Clean up resources."""
-        self.state.save()
         self.camera.cleanup()
         print("Cleanup complete")
 
