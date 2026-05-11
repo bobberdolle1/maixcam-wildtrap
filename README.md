@@ -34,12 +34,14 @@ Production-ready application for MaixCAM with automatic detection, capture, and 
 #### Smart Features
 - 🎯 **Object Filtering** - Target specific animals/people
 - 🤖 **Servo Control** - Trigger food dispensers or physical traps via PWM
+- 🖼️ **On-Device Gallery** - Browse and view captures directly on the touchscreen
+- 🚨 **External Trigger** - Support for secondary GPIO output (Light/Alarm)
 - 🌙 **Night Mode** - Automatic brightness/contrast enhancement
 - 📊 **Metadata Logging** - JSON + CSV detection history
 - 🔔 **Notifications** - Telegram Bot + HTTP Webhook
 - 💾 **Auto-Cleanup** - Manage storage limits automatically
 - ⚡ **Energy Saving** - Optimized detection pipeline
-- 📱 **Touchscreen UI** - Configurable OSD for monitoring (supports 552x368)
+- 📱 **Touchscreen UI** - 3-page settings menu and OSD (supports 552x368)
 
 ---
 
@@ -49,12 +51,12 @@ Production-ready application for MaixCAM with automatic detection, capture, and 
 
 ```bash
 # Download release
-wget https://github.com/bobberdolle1/maixcam-wildtrap/releases/download/v1.5.0/maixcam-wildtrap-v1.5.0.zip
-unzip maixcam-wildtrap-v1.5.0.zip
+wget https://github.com/bobberdolle1/maixcam-wildtrap/releases/download/v1.6.0/maixcam-wildtrap-v1.6.0.zip
+unzip maixcam-wildtrap-v1.6.0.zip
 
 # Copy files to MaixCAM
-scp src/wildtrap_app.py src/wildtrap_config.json root@<MAIXCAM_IP>:/root/
-
+scp src/* root@<MAIXCAM_IP>:/root/
+```
 # SSH into MaixCAM
 ssh root@<MAIXCAM_IP>
 
@@ -287,12 +289,14 @@ Built with:
 #### Умные функции
 - 🎯 **Фильтрация объектов** - Выбор конкретных животных/людей
 - 🤖 **Управление сервоприводом** - Управление ловушками или кормушками через PWM
+- 🖼️ **Галерея на устройстве** - Просмотр снимков прямо на сенсорном экране
+- 🚨 **Внешний триггер** - Поддержка GPIO выхода для света или сирены
 - 🌙 **Ночной режим** - Автоматическое улучшение яркости/контраста
 - 📊 **Логирование метаданных** - JSON + CSV история детекций
 - 🔔 **Уведомления** - Telegram Bot + HTTP Webhook
 - 💾 **Авто-очистка** - Автоматическое управление хранилищем
 - ⚡ **Энергосбережение** - Оптимизированный pipeline детекции
-- 📱 **Сенсорный UI** - Настраиваемое OSD для мониторинга (поддерживает 552x368)
+- 📱 **Сенсорный UI** - Меню из 3-х страниц и OSD (поддерживает 552x368)
 
 ---
 
@@ -302,12 +306,12 @@ Built with:
 
 ```bash
 # Скачать релиз
-wget https://github.com/bobberdolle1/maixcam-wildtrap/releases/download/v1.5.0/maixcam-wildtrap-v1.5.0.zip
-unzip maixcam-wildtrap-v1.5.0.zip
+wget https://github.com/bobberdolle1/maixcam-wildtrap/releases/download/v1.6.0/maixcam-wildtrap-v1.6.0.zip
+unzip maixcam-wildtrap-v1.6.0.zip
 
 # Копировать файлы на MaixCAM
-scp src/wildtrap_app.py src/wildtrap_config.json root@<IP_MAIXCAM>:/root/
-
+scp src/* root@<IP_MAIXCAM>:/root/
+```
 # Подключиться по SSH
 ssh root@<IP_MAIXCAM>
 
