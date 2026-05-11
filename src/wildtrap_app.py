@@ -9,11 +9,11 @@ from datetime import datetime
 from pathlib import Path
 
 try:
-    from maix import camera, display, image, nn, touchscreen
+    from maix import camera, display, image, nn, touchscreen, pinmap, pwm, err
 except ImportError:
-    camera = display = image = nn = touchscreen = None
+    camera = display = image = nn = touchscreen = pinmap = pwm = err = None
 
-VERSION = "1.0.0"
+VERSION = "1.5.0"
 CONFIG_FILE = "wildtrap_config.json"
 BASE_DIR = Path("/root/wildtrap")
 CAPTURES_DIR = BASE_DIR / "captures"
@@ -56,6 +56,13 @@ DEFAULT_CONFIG = {
     "camera_height": 720,
     "night_mode": True,
     "jpeg_quality": 90,
+    "osd_enabled": True,
+    "servo_enabled": False,
+    "servo_pin": "A18",
+    "pwm_id": 6,
+    "servo_angle_open": 90,
+    "servo_angle_close": 0,
+    "servo_close_delay": 10,
     "telegram_enabled": False,
     "telegram_bot_token": "",
     "telegram_chat_id": "",
@@ -119,6 +126,69 @@ def apply_night_mode(img):
         return img
     except:
         return img
+
+class ServoController:
+    """Manages servo for physical actions (e.g. food dispenser)."""
+    def __init__(self, state):
+        self.state = state
+        self.pwm = None
+        self.servo_opened = False
+        self.open_time = 0
+        self.setup()
+    
+    def setup(self):
+        if not self.state.config.get("servo_enabled", False):
+            return
+        try:
+            if pinmap is None or pwm is None or err is None:
+                print("PWM/Pinmap modules not available")
+                return
+            pin = self.state.config["servo_pin"]
+            pwm_id = self.state.config["pwm_id"]
+            
+            err.check_raise(
+                pinmap.set_pin_function(pin, f"PWM{pwm_id}"),
+                f"PWM setup failed for {pin}"
+            )
+            
+            self.pwm = pwm.PWM(pwm_id, freq=50, duty=2.5, enable=True)
+            self.set_angle(self.state.config["servo_angle_close"])
+            print(f"[SERVO] Initialized: {pin} (PWM{pwm_id})")
+        except Exception as e:
+            print(f"[SERVO] Setup error: {e}")
+    
+    def set_angle(self, angle):
+        if self.pwm:
+            duty = 2.5 + (angle / 180.0) * 10.0
+            self.pwm.duty(duty)
+            
+    def open(self):
+        if not self.pwm or not self.state.config.get("servo_enabled", False):
+            return
+        angle = self.state.config["servo_angle_open"]
+        self.set_angle(angle)
+        self.servo_opened = True
+        self.open_time = time.time()
+        print(f"[SERVO] OPEN ({angle}°)")
+        
+    def close(self):
+        if not self.pwm:
+            return
+        angle = self.state.config["servo_angle_close"]
+        self.set_angle(angle)
+        self.servo_opened = False
+        print(f"[SERVO] CLOSE ({angle}°)")
+        
+    def update(self):
+        if self.servo_opened:
+            elapsed = time.time() - self.open_time
+            if elapsed >= self.state.config.get("servo_close_delay", 10):
+                self.close()
+                
+    def cleanup(self):
+        if self.pwm:
+            self.close()
+            self.pwm.disable()
 
 class AppState:
     """Central application state management."""
@@ -563,6 +633,7 @@ class WildTrapApp:
     """Main application controller."""
     def __init__(self):
         self.state = AppState()
+        self.servo = ServoController(self.state)
         self.camera = CameraController(self.state)
         self.motion_detector = MotionDetector(self.state)
         self.ai_detector = AIDetector(self.state)
@@ -609,6 +680,10 @@ class WildTrapApp:
         if not self.state.can_capture():
             return
         self.state.record_detection(objects)
+        
+        # Trigger servo if enabled
+        self.servo.open()
+        
         files = self.capture_manager.save_capture(img, objects, self.camera)
         if files:
             print(f"Captured: {len(files)} files")
@@ -623,6 +698,7 @@ class WildTrapApp:
         print("WildTrap running. Press Ctrl+C to exit.")
         try:
             while self.state.running:
+                self.servo.update()
                 result = self.run_detection_cycle()
                 if result:
                     img, objects = result
@@ -631,6 +707,25 @@ class WildTrapApp:
                     self.ui.handle_input()
                 time.sleep(0.033)  # ~30 FPS
         except KeyboardInterrupt:
+            print("\nShutting down...")
+        finally:
+            self.cleanup()
+    
+    def cleanup(self):
+        """Clean up resources."""
+        self.state.save()
+        self.servo.cleanup()
+        self.camera.cleanup()
+        print("Cleanup complete")
+
+def main():
+    """Application entry point."""
+    app = WildTrapApp()
+    app.run()
+
+if __name__ == "__main__":
+    main()
+
             print("\nShutting down...")
         finally:
             self.cleanup()

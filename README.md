@@ -33,12 +33,13 @@ Production-ready application for MaixCAM with automatic detection, capture, and 
 
 #### Smart Features
 - 🎯 **Object Filtering** - Target specific animals/people
+- 🤖 **Servo Control** - Trigger food dispensers or physical traps via PWM
 - 🌙 **Night Mode** - Automatic brightness/contrast enhancement
 - 📊 **Metadata Logging** - JSON + CSV detection history
 - 🔔 **Notifications** - Telegram Bot + HTTP Webhook
 - 💾 **Auto-Cleanup** - Manage storage limits automatically
 - ⚡ **Energy Saving** - Optimized detection pipeline
-- 📱 **Touchscreen UI** - Easy configuration and monitoring
+- 📱 **Touchscreen UI** - Configurable OSD for monitoring (supports 552x368)
 
 ---
 
@@ -48,11 +49,11 @@ Production-ready application for MaixCAM with automatic detection, capture, and 
 
 ```bash
 # Download release
-wget https://github.com/bobberdolle1/maixcam-wildtrap/releases/download/v1.0.0/maixcam-wildtrap-v1.0.0.zip
-unzip maixcam-wildtrap-v1.0.0.zip
+wget https://github.com/bobberdolle1/maixcam-wildtrap/releases/download/v1.5.0/maixcam-wildtrap-v1.5.0.zip
+unzip maixcam-wildtrap-v1.5.0.zip
 
 # Copy files to MaixCAM
-scp wildtrap_app.py wildtrap_config.json root@<MAIXCAM_IP>:/root/
+scp src/wildtrap_app.py src/wildtrap_config.json root@<MAIXCAM_IP>:/root/
 
 # SSH into MaixCAM
 ssh root@<MAIXCAM_IP>
@@ -63,7 +64,7 @@ mkdir -p /root/wildtrap/{captures,logs,temp}
 
 #### 2. Configuration
 
-Edit `wildtrap_config.json`:
+Edit `src/wildtrap_config.json`:
 
 ```json
 {
@@ -82,7 +83,7 @@ Edit `wildtrap_config.json`:
 #### 3. Run
 
 ```bash
-python3 wildtrap_app.py
+python3 src/wildtrap_app.py
 ```
 
 **See [QUICKSTART.md](QUICKSTART.md) for detailed 5-minute setup guide.**
@@ -122,7 +123,7 @@ Available COCO classes:
 1. Create bot with [@BotFather](https://t.me/botfather)
 2. Get bot token
 3. Get your chat ID from [@userinfobot](https://t.me/userinfobot)
-4. Configure in `wildtrap_config.json`
+4. Configure in `src/wildtrap_config.json`
 
 ---
 
@@ -282,12 +283,13 @@ Built with:
 
 #### Умные функции
 - 🎯 **Фильтрация объектов** - Выбор конкретных животных/людей
+- 🤖 **Управление сервоприводом** - Управление ловушками или кормушками через PWM
 - 🌙 **Ночной режим** - Автоматическое улучшение яркости/контраста
 - 📊 **Логирование метаданных** - JSON + CSV история детекций
 - 🔔 **Уведомления** - Telegram Bot + HTTP Webhook
 - 💾 **Авто-очистка** - Автоматическое управление хранилищем
 - ⚡ **Энергосбережение** - Оптимизированный pipeline детекции
-- 📱 **Сенсорный UI** - Простая настройка и мониторинг
+- 📱 **Сенсорный UI** - Настраиваемое OSD для мониторинга (поддерживает 552x368)
 
 ---
 
@@ -297,11 +299,11 @@ Built with:
 
 ```bash
 # Скачать релиз
-wget https://github.com/bobberdolle1/maixcam-wildtrap/releases/download/v1.0.0/maixcam-wildtrap-v1.0.0.zip
-unzip maixcam-wildtrap-v1.0.0.zip
+wget https://github.com/bobberdolle1/maixcam-wildtrap/releases/download/v1.5.0/maixcam-wildtrap-v1.5.0.zip
+unzip maixcam-wildtrap-v1.5.0.zip
 
 # Копировать файлы на MaixCAM
-scp wildtrap_app.py wildtrap_config.json root@<IP_MAIXCAM>:/root/
+scp src/wildtrap_app.py src/wildtrap_config.json root@<IP_MAIXCAM>:/root/
 
 # Подключиться по SSH
 ssh root@<IP_MAIXCAM>
@@ -312,7 +314,7 @@ mkdir -p /root/wildtrap/{captures,logs,temp}
 
 #### 2. Настройка
 
-Редактировать `wildtrap_config.json`:
+Редактировать `src/wildtrap_config.json`:
 
 ```json
 {
@@ -331,7 +333,7 @@ mkdir -p /root/wildtrap/{captures,logs,temp}
 #### 3. Запуск
 
 ```bash
-python3 wildtrap_app.py
+python3 src/wildtrap_app.py
 ```
 
 **См. [QUICKSTART.md](QUICKSTART.md) для подробной инструкции за 5 минут.**
@@ -371,7 +373,7 @@ python3 wildtrap_app.py
 1. Создать бота через [@BotFather](https://t.me/botfather)
 2. Получить токен бота
 3. Узнать свой chat ID через [@userinfobot](https://t.me/userinfobot)
-4. Настроить в `wildtrap_config.json`
+4. Настроить в `src/wildtrap_config.json`
 
 ---
 
