@@ -13,7 +13,7 @@ try:
 except ImportError:
     camera = display = image = nn = touchscreen = pinmap = pwm = err = None
 
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 CONFIG_FILE = "wildtrap_config.json"
 BASE_DIR = Path("/root/wildtrap")
 CAPTURES_DIR = BASE_DIR / "captures"
@@ -63,6 +63,9 @@ DEFAULT_CONFIG = {
     "servo_angle_open": 90,
     "servo_angle_close": 0,
     "servo_close_delay": 10,
+    "ext_trigger_enabled": False,
+    "ext_trigger_pin": "A19",
+    "ext_trigger_duration": 5,
     "telegram_enabled": False,
     "telegram_bot_token": "",
     "telegram_chat_id": "",
@@ -190,6 +193,47 @@ class ServoController:
             self.close()
             self.pwm.disable()
 
+class ExternalTrigger:
+    """Manages external triggers like lights or alarms via GPIO."""
+    def __init__(self, state):
+        self.state = state
+        self.active = False
+        self.start_time = 0
+        self.pin = None
+        self.setup()
+        
+    def setup(self):
+        if not self.state.config.get("ext_trigger_enabled", False):
+            return
+        try:
+            from maix import gpio
+            pin_name = self.state.config.get("ext_trigger_pin", "A19")
+            self.pin = gpio.GPIO(pin_name, gpio.Mode.OUT)
+            self.pin.value(0)
+            print(f"[TRIGGER] Initialized on {pin_name}")
+        except Exception as e:
+            print(f"[TRIGGER] Setup error: {e}")
+            
+    def trigger(self):
+        if not self.pin or not self.state.config.get("ext_trigger_enabled", False):
+            return
+        self.pin.value(1)
+        self.active = True
+        self.start_time = time.time()
+        print("[TRIGGER] ACTIVE")
+        
+    def update(self):
+        if self.active:
+            elapsed = time.time() - self.start_time
+            if elapsed >= self.state.config.get("ext_trigger_duration", 5):
+                self.pin.value(0)
+                self.active = False
+                print("[TRIGGER] OFF")
+                
+    def cleanup(self):
+        if self.pin:
+            self.pin.value(0)
+
 class AppState:
     """Central application state management."""
     def __init__(self):
@@ -197,7 +241,9 @@ class AppState:
         self.running = True
         self.armed = self.config.get("armed", False)
         self.current_screen = "main"
-        self.menu_selection = 0
+        self.settings_page = 0
+        self.gallery_index = 0
+        self.gallery_files = []
         self.last_touch_time = 0
         self.last_detection_time = 0
         self.captures_today = 0
@@ -585,8 +631,54 @@ class UI:
             self.draw_main_screen(img, objects)
         elif self.state.current_screen == "menu":
             self.draw_menu_screen(img)
+        elif self.state.current_screen == "gallery":
+            self.draw_gallery_screen(img)
             
         self.camera.display_frame(img)
+
+    def draw_gallery_screen(self, img):
+        """Draw gallery of captures."""
+        self.active_buttons = []
+        scale = 1.2 if img.width() <= 640 else 1.5
+        
+        # Dim background
+        img.draw_rectangle(0, 0, img.width(), img.height(), color=(0,0,0), thickness=-1)
+        
+        if not self.state.gallery_files:
+            img.draw_string(img.width()//2 - int(80*scale), img.height()//2, "NO CAPTURES", color=COLOR_WARNING, scale=scale*2)
+            btn_back = UIButton(10, 10, img.height() - int(60*scale), img.width() - 20, int(50*scale), "BACK TO MENU")
+            btn_back.draw(img, scale)
+            self.active_buttons.append({"id": 10, "x": 10, "y": img.height() - int(60*scale), "w": img.width() - 20, "h": int(50*scale)})
+            return
+            
+        # Show current image preview
+        file_path = self.state.gallery_files[self.state.gallery_index]
+        try:
+            # We draw a small version of the image in the center
+            from maix import image as mimage
+            prev_img = mimage.load(str(file_path))
+            # Fit to screen roughly
+            prev_img = prev_img.resize(img.width() - 40, img.height() - 140)
+            img.draw_image(20, 40, prev_img)
+        except:
+            img.draw_string(50, 100, "ERR LOADING IMG", color=COLOR_ERROR, scale=scale)
+            
+        img.draw_string(10, 10, f"GALLERY ({self.state.gallery_index + 1}/{len(self.state.gallery_files)})", color=COLOR_ACCENT, scale=scale)
+        img.draw_string(10, img.height() - int(100*scale), Path(file_path).name, color=COLOR_TEXT, scale=scale*0.8)
+        
+        w = int(img.width() / 3) - 15
+        h = int(50 * scale)
+        y = img.height() - int(60 * scale)
+        
+        btn_prev = UIButton(200, 10, y, w, h, "<< PREV")
+        btn_next = UIButton(201, 10 + w + 10, y, w, h, "NEXT >>")
+        btn_back = UIButton(10, 10 + 2*(w + 10), y, w, h, "BACK")
+        
+        # We need to manually add to active_buttons because UIButton doesn't store state perfectly in this flow
+        btns = [btn_prev, btn_next, btn_back]
+        for b in btns:
+            b.draw(img, scale)
+            self.active_buttons.append({"id": b.id, "x": b.x, "y": b.y, "w": b.w, "h": b.h})
 
     def draw_menu_screen(self, img):
         """Draw settings menu overlay."""
@@ -595,7 +687,7 @@ class UI:
         
         # Dim background
         img.draw_rectangle(0, 0, img.width(), img.height(), color=(0,0,0), thickness=-1)
-        title = f"SETTINGS (Page {self.settings_page + 1}/2)"
+        title = f"SETTINGS (Page {self.settings_page + 1}/3)"
         img.draw_string(10, 10, title, color=COLOR_ACCENT, scale=scale*1.8)
         
         w = int(img.width() / 2) - 20
@@ -614,21 +706,27 @@ class UI:
                 (4, "Night Mode", "ON" if self.state.config.get("night_mode", True) else "OFF"),
                 (100, "Next Page ->", "")
             ]
-        else:
-            # Page 2: Hardware & Maintenance
+        elif self.settings_page == 1:
+            # Page 2: Hardware
             btn_data = [
                 (5, "OSD Display", "ON" if self.state.config.get("osd_enabled", True) else "OFF"),
                 (6, "Servo En", "ON" if self.state.config.get("servo_enabled", False) else "OFF"),
                 (7, "Servo Pin", str(self.state.config.get("servo_pin", "A18"))),
                 (8, "Servo Open", f"{self.state.config.get('servo_angle_open', 90)}°"),
+                (101, "<- Prev Page", ""),
+                (100, "Next Page ->", "")
+            ]
+        else:
+            # Page 3: External & Gallery
+            btn_data = [
+                (11, "Ext Trigger", "ON" if self.state.config.get("ext_trigger_enabled", False) else "OFF"),
+                (12, "Trigger Pin", str(self.state.config.get("ext_trigger_pin", "A19"))),
+                (13, "OPEN GALLERY", "", COLOR_ACCENT),
                 (9, "RESET ALL", "!!!", COLOR_ERROR),
-                (101, "<- Prev Page", "")
+                (101, "<- Prev Page", ""),
+                (10, "SAVE & EXIT", "", COLOR_WARNING)
             ]
             
-        # Add a fixed "Save & Exit" button at the bottom center if there's room, 
-        # or just make it part of the grid. Let's make it a grid item.
-        btn_data.append((10, "SAVE & EXIT", "", COLOR_WARNING))
-
         for i, data in enumerate(btn_data):
             id, label, value = data[0], data[1], data[2]
             color_btn = data[3] if len(data) > 3 else None
@@ -638,7 +736,6 @@ class UI:
             x = 10 + col * (w + 10)
             y = start_y + row * (h + spacing)
             
-            # Draw specific button logic
             img.draw_rectangle(x, y, w, h, color=COLOR_BG, thickness=-1)
             img.draw_rectangle(x, y, w, h, color=color_btn if color_btn else COLOR_TEXT, thickness=2)
             
@@ -765,14 +862,33 @@ class UI:
             idx = (angles.index(current) + 1) % len(angles) if current in angles else 0
             self.state.config["servo_angle_open"] = angles[idx]
         elif btn_id == 9:
-            # RESET ALL
             self.state.config = DEFAULT_CONFIG.copy()
             self.state.armed = False
             print("[UI] Settings reset to default")
+        elif btn_id == 11:
+            self.state.config["ext_trigger_enabled"] = not self.state.config.get("ext_trigger_enabled", False)
+        elif btn_id == 12:
+            pins = ["A14", "A15", "A16", "A17", "A18", "A19"]
+            current = self.state.config.get("ext_trigger_pin", "A19")
+            idx = (pins.index(current) + 1) % len(pins) if current in pins else 0
+            self.state.config["ext_trigger_pin"] = pins[idx]
+        elif btn_id == 13:
+            # Open Gallery
+            self.state.gallery_files = sorted([str(f) for f in CAPTURES_DIR.glob("*.jpg")], reverse=True)
+            self.state.gallery_index = 0
+            self.state.current_screen = "gallery"
+        elif btn_id == 200:
+            # Gallery Prev
+            if self.state.gallery_index > 0:
+                self.state.gallery_index -= 1
+        elif btn_id == 201:
+            # Gallery Next
+            if self.state.gallery_index < len(self.state.gallery_files) - 1:
+                self.state.gallery_index += 1
         elif btn_id == 100:
-            self.settings_page = 1
+            self.settings_page = (self.settings_page + 1) % 3
         elif btn_id == 101:
-            self.settings_page = 0
+            self.settings_page = (self.settings_page - 1) % 3
         elif btn_id == 10:
             self.state.save()
             self.state.current_screen = "main"
@@ -783,6 +899,7 @@ class WildTrapApp:
     def __init__(self):
         self.state = AppState()
         self.servo = ServoController(self.state)
+        self.trigger = ExternalTrigger(self.state)
         self.camera = CameraController(self.state)
         self.motion_detector = MotionDetector(self.state)
         self.ai_detector = AIDetector(self.state)
@@ -790,7 +907,7 @@ class WildTrapApp:
         self.capture_manager = CaptureManager(self.state)
         self.notification_manager = NotificationManager(self.state)
         self.ui = UI(self.state, self.camera)
-        
+
     def initialize(self):
         """Initialize all components."""
         print(f"WildTrap v{VERSION} - Initializing...")
@@ -801,7 +918,7 @@ class WildTrapApp:
         self.ui.initialize()
         print("Initialization complete")
         return True
-    
+
     def run_detection_cycle(self):
         """Execute one detection cycle."""
         img = self.camera.capture_frame()
@@ -821,7 +938,7 @@ class WildTrapApp:
             if time.time() - self.state.last_detection_time >= interval:
                 objects = [{"label": "scheduled", "confidence": 1.0, "bbox": [0,0,0,0]}]
         return img, objects
-    
+
     def process_detection(self, img, objects):
         """Process detected objects and trigger capture."""
         if not objects or not self.state.armed:
@@ -829,16 +946,17 @@ class WildTrapApp:
         if not self.state.can_capture():
             return
         self.state.record_detection(objects)
-        
-        # Trigger servo if enabled
+
+        # Trigger outputs
         self.servo.open()
-        
+        self.trigger.trigger()
+
         files = self.capture_manager.save_capture(img, objects, self.camera)
         if files:
             print(f"Captured: {len(files)} files")
             self.notification_manager.send_notification(files[0], objects)
             self.capture_manager.cleanup_old_files()
-    
+
     def run(self):
         """Main application loop."""
         if not self.initialize():
@@ -848,25 +966,26 @@ class WildTrapApp:
         try:
             while self.state.running:
                 self.servo.update()
+                self.trigger.update()
                 result = self.run_detection_cycle()
                 if result:
                     img, objects = result
                     self.process_detection(img, objects)
-                    self.ui.draw_main_screen(img, objects)
-                    self.ui.handle_input()
+                    self.ui.draw(img, objects)
+                    self.ui.handle_input(img)
                 time.sleep(0.033)  # ~30 FPS
         except KeyboardInterrupt:
             print("\nShutting down...")
         finally:
             self.cleanup()
-    
+
     def cleanup(self):
         """Clean up resources."""
         self.state.save()
         self.servo.cleanup()
+        self.trigger.cleanup()
         self.camera.cleanup()
         print("Cleanup complete")
-
 def main():
     """Application entry point."""
     app = WildTrapApp()
