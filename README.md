@@ -1,27 +1,37 @@
+# 🎯 MaixCAM WildTrap
 
-# MaixCAM WildTrap 🎯
+[![Release](https://img.shields.io/github/v/release/bobberdolle1/maixcam-wildtrap)](https://github.com/bobberdolle1/maixcam-wildtrap/releases)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.x-blue.svg)](https://www.python.org/)
+[![MaixPy](https://img.shields.io/badge/MaixPy-4.x-green.svg)](https://wiki.sipeed.com/maixpy)
+[![YOLOv8](https://img.shields.io/badge/YOLOv8-nano-orange.svg)](https://github.com/ultralytics/ultralytics)
 
-**AI-Powered Camera Trap for Wildlife Monitoring**
+**AI-Powered Camera Trap for Wildlife Monitoring & Security**
 
 Production-ready application for MaixCAM with automatic detection, capture, and notifications.
 
+[English](#english) | [Русский](#русский)
+
 ---
 
-## Features
+<a name="english"></a>
+## 🇬🇧 English
 
-### Detection Modes
+### Features
+
+#### Detection Modes
 - **Motion Detection** - Energy-efficient frame differencing
-- **AI Detection** - YOLOv8 object recognition (animals, people, vehicles)
+- **AI Detection** - YOLOv8 object recognition (80 classes)
 - **Hybrid Mode** ⭐ - Motion trigger → AI verification (recommended)
 - **Scheduled Mode** - Timelapse capture at intervals
 
-### Capture Modes
+#### Capture Modes
 - **Photo** - Single high-quality image
 - **Burst** - Series of 3/5/10 photos
 - **Video** - Record 5/10/15/30 second clips
 - **Timelapse** - Periodic capture during detection
 
-### Smart Features
+#### Smart Features
 - 🎯 **Object Filtering** - Target specific animals/people
 - 🌙 **Night Mode** - Automatic brightness/contrast enhancement
 - 📊 **Metadata Logging** - JSON + CSV detection history
@@ -32,22 +42,26 @@ Production-ready application for MaixCAM with automatic detection, capture, and 
 
 ---
 
-## Quick Start
+### Quick Start
 
-### 1. Installation
+#### 1. Installation
 
 ```bash
+# Download release
+wget https://github.com/bobberdolle1/maixcam-wildtrap/releases/download/v1.0.0/maixcam-wildtrap-v1.0.0.zip
+unzip maixcam-wildtrap-v1.0.0.zip
+
 # Copy files to MaixCAM
-scp wildtrap_app.py wildtrap_config.json root@maixcam:/root/
+scp wildtrap_app.py wildtrap_config.json root@<MAIXCAM_IP>:/root/
 
 # SSH into MaixCAM
-ssh root@maixcam
+ssh root@<MAIXCAM_IP>
 
 # Create directories
 mkdir -p /root/wildtrap/{captures,logs,temp}
 ```
 
-### 2. Configuration
+#### 2. Configuration
 
 Edit `wildtrap_config.json`:
 
@@ -60,21 +74,24 @@ Edit `wildtrap_config.json`:
   "cooldown_seconds": 30,
   "telegram_enabled": true,
   "telegram_bot_token": "YOUR_BOT_TOKEN",
-  "telegram_chat_id": "YOUR_CHAT_ID"
+  "telegram_chat_id": "YOUR_CHAT_ID",
+  "armed": true
 }
 ```
 
-### 3. Run
+#### 3. Run
 
 ```bash
 python3 wildtrap_app.py
 ```
 
+**See [QUICKSTART.md](QUICKSTART.md) for detailed 5-minute setup guide.**
+
 ---
 
-## Configuration Guide
+### Configuration Guide
 
-### Detection Settings
+#### Detection Settings
 
 | Parameter | Values | Description |
 |-----------|--------|-------------|
@@ -84,14 +101,14 @@ python3 wildtrap_app.py
 | `min_object_size` | pixels | Filter small detections |
 | `cooldown_seconds` | seconds | Delay between captures |
 
-### Target Objects
+#### Target Objects
 
 Available COCO classes:
-- **Animals**: dog, cat, bird, horse, cow, sheep, bear, elephant, zebra, giraffe
+- **Animals**: dog, cat, bird, horse, cow, sheep, bear, elephant, zebra, giraffe, deer
 - **People**: person
 - **Vehicles**: car, truck, motorcycle, bus
 
-### Camera Settings
+#### Camera Settings
 
 | Parameter | Values | Description |
 |-----------|--------|-------------|
@@ -100,87 +117,18 @@ Available COCO classes:
 | `night_mode` | true/false | Auto brightness boost |
 | `jpeg_quality` | 1-100 | Compression quality |
 
-### Capture Settings
-
-| Parameter | Values | Description |
-|-----------|--------|-------------|
-| `capture_mode` | photo/burst/video/timelapse | Capture type |
-| `burst_count` | 3/5/10 | Photos per burst |
-| `video_duration` | 5/10/15/30 | Video length (seconds) |
-| `timelapse_interval` | seconds | Interval for scheduled mode |
-
-### Telegram Notifications
+#### Telegram Notifications
 
 1. Create bot with [@BotFather](https://t.me/botfather)
 2. Get bot token
 3. Get your chat ID from [@userinfobot](https://t.me/userinfobot)
-4. Configure:
-
-```json
-{
-  "telegram_enabled": true,
-  "telegram_bot_token": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
-  "telegram_chat_id": "123456789",
-  "telegram_throttle_minutes": 5
-}
-```
-
-### Storage Management
-
-| Parameter | Values | Description |
-|-----------|--------|-------------|
-| `storage_max_gb` | GB | Maximum storage usage |
-| `storage_keep_days` | days | Auto-delete older files |
-| `auto_cleanup` | true/false | Enable automatic cleanup |
+4. Configure in `wildtrap_config.json`
 
 ---
 
-## File Structure
+### Example Configurations
 
-```
-/root/wildtrap/
-├── captures/              # Saved photos/videos
-│   ├── 20260510_143022_dog_0.87.jpg
-│   ├── 20260510_143022_dog_0.87.json
-│   └── ...
-├── logs/
-│   └── detections.csv    # Detection history
-└── temp/                 # Temporary files
-```
-
-### Metadata Format
-
-Each capture includes a JSON file:
-
-```json
-{
-  "timestamp": "20260510_143022",
-  "detection_mode": "hybrid",
-  "capture_mode": "burst",
-  "detected_objects": [
-    {
-      "label": "dog",
-      "confidence": 0.87,
-      "bbox": [120, 80, 450, 380]
-    }
-  ],
-  "camera_settings": {
-    "width": 1280,
-    "height": 720,
-    "night_mode": true,
-    "quality": 90
-  },
-  "files": ["20260510_143022_dog_0.87_burst1.jpg", ...]
-}
-```
-
----
-
-## Usage Tips
-
-### Recommended Settings
-
-**Wildlife Monitoring (Day)**
+#### Wildlife Monitoring (Day)
 ```json
 {
   "detection_mode": "hybrid",
@@ -193,7 +141,7 @@ Each capture includes a JSON file:
 }
 ```
 
-**Security (24/7)**
+#### Security Camera (24/7)
 ```json
 {
   "detection_mode": "hybrid",
@@ -206,7 +154,7 @@ Each capture includes a JSON file:
 }
 ```
 
-**Bird Watching**
+#### Bird Watching
 ```json
 {
   "detection_mode": "ai",
@@ -218,92 +166,36 @@ Each capture includes a JSON file:
 }
 ```
 
-### Energy Optimization
-
-- Use **hybrid mode** for best battery life
-- Increase `cooldown_seconds` to reduce captures
-- Lower resolution for longer operation
-- Disable notifications when not needed
-
-### Night Vision
-
-The software night mode enhances images by:
-1. Increasing exposure/brightness (1.5x multiplier)
-2. Histogram equalization for contrast
-3. Automatic adjustment per frame
-
-For best results:
-- Enable `night_mode: true`
-- Use lower resolution (640x480)
-- Increase `confidence_threshold` to 0.7+
+**See [EXAMPLES.md](EXAMPLES.md) for 8 complete real-world configurations.**
 
 ---
 
-## Troubleshooting
+### File Structure
 
-### Camera Not Initializing
-```bash
-# Check camera module
-ls /dev/video*
-
-# Restart camera service
-systemctl restart camera
 ```
-
-### AI Model Not Found
-```bash
-# Download YOLOv8 model
-cd /root/models
-wget https://github.com/sipeed/MaixPy/releases/download/v4.0.0/yolov8n.mud
-```
-
-### Storage Full
-```bash
-# Manual cleanup
-rm -rf /root/wildtrap/captures/*
-
-# Or enable auto_cleanup in config
-```
-
-### Telegram Not Working
-- Verify bot token and chat ID
-- Check internet connection
-- Test with curl:
-```bash
-curl "https://api.telegram.org/bot<TOKEN>/getMe"
+/root/wildtrap/
+├── captures/              # Saved photos/videos
+│   ├── 20260510_143022_dog_0.87.jpg
+│   ├── 20260510_143022_dog_0.87.json
+│   └── ...
+├── logs/
+│   └── detections.csv    # Detection history
+└── temp/                 # Temporary files
 ```
 
 ---
 
-## API Reference
+### Documentation
 
-### AppState
-- `can_capture()` - Check cooldown status
-- `record_detection(objects)` - Log detection event
-- `save()` - Persist configuration
-
-### CameraController
-- `initialize()` - Setup camera and display
-- `capture_frame()` - Get single frame
-- `capture_photo(filename)` - Save photo
-- `capture_burst(base, count)` - Burst mode
-- `capture_video(filename, duration)` - Video recording
-
-### Detectors
-- `MotionDetector.detect(img)` - Frame differencing
-- `AIDetector.detect(img)` - YOLOv8 inference
-- `HybridDetector.detect(img)` - Combined pipeline
-
-### CaptureManager
-- `save_capture(img, objects, camera)` - Save with metadata
-- `cleanup_old_files()` - Storage management
-
-### NotificationManager
-- `send_notification(image_path, objects)` - Multi-channel alerts
+- **[START_HERE.md](START_HERE.md)** - Navigation guide
+- **[QUICKSTART.md](QUICKSTART.md)** - 5-minute setup
+- **[EXAMPLES.md](EXAMPLES.md)** - 8 real-world configurations
+- **[PROJECT_INFO.md](PROJECT_INFO.md)** - Technical architecture
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history
 
 ---
 
-## Performance
+### Performance
 
 | Mode | FPS | Power | Accuracy |
 |------|-----|-------|----------|
@@ -314,27 +206,312 @@ curl "https://api.telegram.org/bot<TOKEN>/getMe"
 
 ---
 
-## License
+### Troubleshooting
 
-MIT License - Free for personal and commercial use
+#### Camera Not Initializing
+```bash
+ls /dev/video*
+systemctl restart camera
+```
+
+#### AI Model Not Found
+```bash
+cd /root/models
+wget https://github.com/sipeed/MaixPy/releases/download/v4.0.0/yolov8n.mud
+```
+
+#### No Detections
+- Check `"armed": true` in config
+- Lower `confidence_threshold` to 0.5
+- Verify `target_objects` includes what you're testing
+- Check lighting conditions
 
 ---
 
-## Support
+### Contributing
 
-- GitHub Issues: [Report bugs](https://github.com/yourusername/wildtrap)
-- MaixPy Docs: https://wiki.sipeed.com/maixpy
-- Community: https://maixhub.com
+Contributions welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+See [PROJECT_INFO.md](PROJECT_INFO.md) for architecture details.
 
 ---
 
-## Credits
+### License
+
+MIT License - Free for personal and commercial use. See [LICENSE](LICENSE) for details.
+
+---
+
+### Support
+
+- **Issues**: [GitHub Issues](https://github.com/bobberdolle1/maixcam-wildtrap/issues)
+- **MaixPy Docs**: https://wiki.sipeed.com/maixpy
+- **Community**: https://maixhub.com
+
+---
+
+### Credits
 
 Built with:
 - [MaixPy](https://github.com/sipeed/MaixPy) - Python framework for MaixCAM
 - [YOLOv8](https://github.com/ultralytics/ultralytics) - Object detection
-- Architecture inspired by advanced_servo_app.py
+- MaixCAM by [Sipeed](https://www.sipeed.com/)
+
+---
+
+<a name="русский"></a>
+## 🇷🇺 Русский
+
+### Возможности
+
+#### Режимы детекции
+- **Motion Detection** - Энергоэффективное определение движения
+- **AI Detection** - Распознавание объектов YOLOv8 (80 классов)
+- **Hybrid Mode** ⭐ - Движение → AI проверка (рекомендуется)
+- **Scheduled Mode** - Таймлапс съемка по расписанию
+
+#### Режимы съемки
+- **Photo** - Одиночное фото высокого качества
+- **Burst** - Серия из 3/5/10 фотографий
+- **Video** - Запись видео 5/10/15/30 секунд
+- **Timelapse** - Периодическая съемка при детекции
+
+#### Умные функции
+- 🎯 **Фильтрация объектов** - Выбор конкретных животных/людей
+- 🌙 **Ночной режим** - Автоматическое улучшение яркости/контраста
+- 📊 **Логирование метаданных** - JSON + CSV история детекций
+- 🔔 **Уведомления** - Telegram Bot + HTTP Webhook
+- 💾 **Авто-очистка** - Автоматическое управление хранилищем
+- ⚡ **Энергосбережение** - Оптимизированный pipeline детекции
+- 📱 **Сенсорный UI** - Простая настройка и мониторинг
+
+---
+
+### Быстрый старт
+
+#### 1. Установка
+
+```bash
+# Скачать релиз
+wget https://github.com/bobberdolle1/maixcam-wildtrap/releases/download/v1.0.0/maixcam-wildtrap-v1.0.0.zip
+unzip maixcam-wildtrap-v1.0.0.zip
+
+# Копировать файлы на MaixCAM
+scp wildtrap_app.py wildtrap_config.json root@<IP_MAIXCAM>:/root/
+
+# Подключиться по SSH
+ssh root@<IP_MAIXCAM>
+
+# Создать директории
+mkdir -p /root/wildtrap/{captures,logs,temp}
+```
+
+#### 2. Настройка
+
+Редактировать `wildtrap_config.json`:
+
+```json
+{
+  "detection_mode": "hybrid",
+  "capture_mode": "burst",
+  "target_objects": ["dog", "cat", "bird", "person"],
+  "confidence_threshold": 0.6,
+  "cooldown_seconds": 30,
+  "telegram_enabled": true,
+  "telegram_bot_token": "ВАШ_ТОКЕН_БОТА",
+  "telegram_chat_id": "ВАШ_CHAT_ID",
+  "armed": true
+}
+```
+
+#### 3. Запуск
+
+```bash
+python3 wildtrap_app.py
+```
+
+**См. [QUICKSTART.md](QUICKSTART.md) для подробной инструкции за 5 минут.**
+
+---
+
+### Руководство по настройке
+
+#### Параметры детекции
+
+| Параметр | Значения | Описание |
+|----------|----------|----------|
+| `detection_mode` | motion / ai / hybrid / scheduled | Метод детекции |
+| `motion_sensitivity` | 20-100 | Порог чувствительности движения |
+| `confidence_threshold` | 0.3-0.9 | Минимальная уверенность AI |
+| `min_object_size` | пиксели | Фильтр мелких объектов |
+| `cooldown_seconds` | секунды | Задержка между съемками |
+
+#### Целевые объекты
+
+Доступные COCO классы:
+- **Животные**: dog, cat, bird, horse, cow, sheep, bear, elephant, zebra, giraffe, deer
+- **Люди**: person
+- **Транспорт**: car, truck, motorcycle, bus
+
+#### Настройки камеры
+
+| Параметр | Значения | Описание |
+|----------|----------|----------|
+| `camera_width` | 320/640/1280/1920 | Ширина разрешения |
+| `camera_height` | 240/480/720/1080 | Высота разрешения |
+| `night_mode` | true/false | Авто-усиление яркости |
+| `jpeg_quality` | 1-100 | Качество сжатия |
+
+#### Уведомления Telegram
+
+1. Создать бота через [@BotFather](https://t.me/botfather)
+2. Получить токен бота
+3. Узнать свой chat ID через [@userinfobot](https://t.me/userinfobot)
+4. Настроить в `wildtrap_config.json`
+
+---
+
+### Примеры конфигураций
+
+#### Мониторинг дикой природы (день)
+```json
+{
+  "detection_mode": "hybrid",
+  "capture_mode": "burst",
+  "burst_count": 5,
+  "target_objects": ["dog", "cat", "bird", "deer", "bear"],
+  "confidence_threshold": 0.7,
+  "cooldown_seconds": 60,
+  "night_mode": false
+}
+```
+
+#### Охранная камера (24/7)
+```json
+{
+  "detection_mode": "hybrid",
+  "capture_mode": "video",
+  "video_duration": 15,
+  "target_objects": ["person", "car"],
+  "confidence_threshold": 0.8,
+  "cooldown_seconds": 30,
+  "night_mode": true
+}
+```
+
+#### Наблюдение за птицами
+```json
+{
+  "detection_mode": "ai",
+  "capture_mode": "burst",
+  "burst_count": 10,
+  "target_objects": ["bird"],
+  "confidence_threshold": 0.6,
+  "cooldown_seconds": 10
+}
+```
+
+**См. [EXAMPLES.md](EXAMPLES.md) для 8 полных реальных конфигураций.**
+
+---
+
+### Структура файлов
+
+```
+/root/wildtrap/
+├── captures/              # Сохраненные фото/видео
+│   ├── 20260510_143022_dog_0.87.jpg
+│   ├── 20260510_143022_dog_0.87.json
+│   └── ...
+├── logs/
+│   └── detections.csv    # История детекций
+└── temp/                 # Временные файлы
+```
+
+---
+
+### Документация
+
+- **[START_HERE.md](START_HERE.md)** - Навигация по проекту
+- **[QUICKSTART.md](QUICKSTART.md)** - Установка за 5 минут
+- **[EXAMPLES.md](EXAMPLES.md)** - 8 реальных конфигураций
+- **[PROJECT_INFO.md](PROJECT_INFO.md)** - Техническая архитектура
+- **[CHANGELOG.md](CHANGELOG.md)** - История версий
+
+---
+
+### Производительность
+
+| Режим | FPS | Энергия | Точность |
+|-------|-----|---------|----------|
+| Motion | ~30 | Низкая | Средняя |
+| AI | ~20 | Высокая | Высокая |
+| Hybrid | ~25 | Средняя | Высокая |
+| Scheduled | Переменная | Очень низкая | N/A |
+
+---
+
+### Решение проблем
+
+#### Камера не инициализируется
+```bash
+ls /dev/video*
+systemctl restart camera
+```
+
+#### AI модель не найдена
+```bash
+cd /root/models
+wget https://github.com/sipeed/MaixPy/releases/download/v4.0.0/yolov8n.mud
+```
+
+#### Нет детекций
+- Проверить `"armed": true` в конфиге
+- Снизить `confidence_threshold` до 0.5
+- Проверить что `target_objects` включает тестируемый объект
+- Проверить условия освещения
+
+---
+
+### Участие в разработке
+
+Приветствуются вклады! Пожалуйста:
+1. Сделайте fork репозитория
+2. Создайте feature branch
+3. Внесите изменения
+4. Отправьте pull request
+
+См. [PROJECT_INFO.md](PROJECT_INFO.md) для деталей архитектуры.
+
+---
+
+### Лицензия
+
+MIT License - Свободно для личного и коммерческого использования. См. [LICENSE](LICENSE) для деталей.
+
+---
+
+### Поддержка
+
+- **Issues**: [GitHub Issues](https://github.com/bobberdolle1/maixcam-wildtrap/issues)
+- **MaixPy Docs**: https://wiki.sipeed.com/maixpy
+- **Сообщество**: https://maixhub.com
+
+---
+
+### Благодарности
+
+Создано с использованием:
+- [MaixPy](https://github.com/sipeed/MaixPy) - Python фреймворк для MaixCAM
+- [YOLOv8](https://github.com/ultralytics/ultralytics) - Детекция объектов
+- MaixCAM от [Sipeed](https://www.sipeed.com/)
 
 ---
 
 **Made with ❤️ for wildlife enthusiasts and makers**
+
+**Сделано с ❤️ для любителей дикой природы и мейкеров**
